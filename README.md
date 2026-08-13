@@ -47,7 +47,7 @@ sudo apt install fio jq sysstat
 ## Quick start
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/kavox.git
+git clone https://github.com/MasoudKhanalizadeh/kavox.git
 cd kavox
 chmod +x *.sh tests/*.sh tests/mock_bin/*
 ./kavox.sh
@@ -174,3 +174,4 @@ tracking.
 ## License
 
 [MIT](LICENSE)
+
