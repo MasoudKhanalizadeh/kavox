@@ -1,0 +1,21 @@
+# Runtime configuration and user-entered metadata
+benchmark_config.tsv
+benchmark_metadata.tsv
+
+# Generated benchmark artifacts
+results/
+comparisons/
+dataset-results/
+
+# Local packages and temporary files
+*.zip
+*.tar.gz
+*.tmp
+*.swp
+*~
+
+# Editor and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

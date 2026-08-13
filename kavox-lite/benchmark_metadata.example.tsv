@@ -1,0 +1,22 @@
+field	value	description
+operator		Person who ran the benchmark
+customer_or_site		Customer, laboratory, or site name
+system_id		Unique tested-system identifier
+test_purpose		Short purpose of this run
+san_vendor_model		SAN vendor and model
+san_serial		SAN serial or asset identifier
+san_firmware		SAN firmware version
+san_controller_layout		Controller count, active-active or active-passive, and cache
+pool_layout		Pool, span, and LUN layout
+raid_layout		RAID level, width, stripe/chunk, and disk-group layout
+backend_disks		Disk count, media type, model, capacity, and firmware
+lun_provisioning		Thick or thin provisioning and LUN size
+fc_switches		FC switch model, firmware, and relevant ports
+fc_link_layout		Path count, negotiated speed, zoning, and multipath policy
+hba_details		HBA/CNA model, firmware, driver, and queue settings
+baremetal_server		Server model, BIOS, and relevant firmware bundle
+esxi_host		ESXi host model, ESXi build, HBA, datastore, and path policy
+vm_configuration		vCPU, RAM, virtual controller, VMDK layout, reservations, and limits
+filesystem_notes		Filesystem creation and mount options not visible automatically
+background_services		Known application, backup, monitoring, or antivirus activity
+environment_notes		Temperature, maintenance state, or other test conditions

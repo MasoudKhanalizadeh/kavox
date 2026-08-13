@@ -1,0 +1,28 @@
+{
+  "fio version": "fio-3.36",
+  "jobs": [
+    {
+      "jobname": "fixture",
+      "error": 0,
+      "read": {
+        "io_bytes": 1048576000,
+        "bw_bytes": 104857600,
+        "iops": 1000,
+        "runtime": 10000,
+        "slat_ns": {"min": 5000, "max": 20000, "mean": 10000, "N": 10000},
+        "clat_ns": {"min": 500000, "max": 2000000, "mean": 1000000, "N": 10000,
+          "bins": {"1000000": 9000, "2000000": 1000}},
+        "lat_ns": {"min": 505000, "max": 2020000, "mean": 1010000, "N": 10000}
+      },
+      "write": {
+        "io_bytes": 0,
+        "bw_bytes": 0,
+        "iops": 0,
+        "runtime": 0,
+        "slat_ns": {"min": 0, "max": 0, "mean": 0, "N": 0},
+        "clat_ns": {"min": 0, "max": 0, "mean": 0, "N": 0, "bins": {}},
+        "lat_ns": {"min": 0, "max": 0, "mean": 0, "N": 0}
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+case "$*" in
+    *FSTYPE*) echo "xfs" ;;
+    *UUID*) echo "FIXTURE-UUID" ;;
+    *SOURCE*) echo "/dev/mock" ;;
+    *-J*) echo '{"filesystems":[]}' ;;
+    *) echo "/dev/mock /fixture xfs rw" ;;
+esac

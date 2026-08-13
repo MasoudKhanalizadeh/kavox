@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+if [[ "${1:-}" == "-V" ]]; then
+    echo "sysstat mock"
+    exit 0
+fi
+trap 'exit 0' INT TERM
+echo "mock iostat telemetry"
+while :; do
+    echo "$(date -Is) mock-device rMB/s=1 wMB/s=2 await=3 util=4"
+    sleep 1
+done

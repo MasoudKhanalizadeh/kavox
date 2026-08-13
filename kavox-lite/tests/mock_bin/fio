@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -u
+if [[ "${1:-}" == "--version" ]]; then
+    echo "fio-3.36-mock"
+    exit 0
+fi
+output_file=""
+for argument in "$@"; do
+    case "$argument" in
+        --output=*) output_file="${argument#--output=}" ;;
+    esac
+done
+if [[ -z "$output_file" ]]; then
+    echo "mock fio read-only dataset sample completed"
+    exit 0
+fi
+{
+    echo "mock fio normal output before JSON"
+    sed 's/"fixture"/"runner-mock"/' "$(dirname -- "${BASH_SOURCE[0]}")/../fixture_jsonplus.json"
+    echo "mock fio normal output after JSON"
+} > "$output_file"
