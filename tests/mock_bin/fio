@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 set -u
 if [[ "${1:-}" == "--version" ]]; then
     echo "fio-3.36-mock"

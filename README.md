@@ -1,5 +1,8 @@
 # Kavox Lite
 
+**Original creator and architect:** [Masoud Khanalizadeh Imani](https://github.com/MasoudKhanalizadeh)
+**Official repository:** [https://github.com/MasoudKhanalizadeh/kavox](https://github.com/MasoudKhanalizadeh/kavox)
+
 Reproducible, safety-focused storage benchmarking with FIO on Linux, bare metal,
 virtual machines, and parallel LUNs.
 
@@ -173,5 +176,11 @@ tracking.
 
 ## License
 
-[MIT](LICENSE)
+[GNU AGPL v3](LICENSE)
 
+
+## Licensing and attribution
+
+Kavox is free and open-source under **AGPL-3.0-only**. Preserve the original
+creator attribution and see the [NOTICE](NOTICE), [trademark policy](TRADEMARKS.md),
+and [commercial licensing](COMMERCIAL-LICENSE.md) documents.

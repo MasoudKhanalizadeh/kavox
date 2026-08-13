@@ -1,5 +1,8 @@
 # Kavox Lite
 
+**خالق و معمار اصلی پروژه:** [Masoud Khanalizadeh Imani](https://github.com/MasoudKhanalizadeh)
+**مخزن رسمی:** [https://github.com/MasoudKhanalizadeh/kavox](https://github.com/MasoudKhanalizadeh/kavox)
+
 ابزار Bash-only برای اجرای تکرارپذیر تست‌های ذخیره‌سازی با FIO روی Linux،
 Bare Metal، ماشین مجازی و چند LUN موازی.
 
@@ -134,5 +137,11 @@ make test
 
 ## مجوز
 
-[MIT License](LICENSE)
+[GNU AGPL v3](LICENSE)
 
+
+## مجوز و انتساب سازنده
+
+Kavox تحت مجوز **AGPL-3.0-only** رایگان و متن‌باز است. نام خالق اصلی پروژه
+باید حفظ شود. جزئیات در [NOTICE](NOTICE)، [سیاست علامت تجاری](TRADEMARKS.md)
+و [مجوز تجاری](COMMERCIAL-LICENSE.md) آمده است.

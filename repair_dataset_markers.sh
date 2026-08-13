@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Repair only initialization markers for existing exact-size datasets.
 # Dataset bytes are read at three sample regions but never written by this script.
 

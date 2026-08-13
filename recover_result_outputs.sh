@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Rebuild derived normal and JSON+ files from preserved combined.raw files.
 # Raw FIO output is never modified. The manifest is backed up before updates.
 

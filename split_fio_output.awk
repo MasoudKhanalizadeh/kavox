@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Split fio's combined normal,json+ stream without assuming which format comes
 # first. The first complete top-level JSON object is written to json_file;
 # everything before and after it is preserved in normal_file.

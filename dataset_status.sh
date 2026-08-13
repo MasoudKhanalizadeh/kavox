@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Read-only metadata status check for one or more benchmark datasets.
 # Exit codes: 0=all READY, 3=existing exact-size file needs marker repair,
 # 4=missing/conflicting/inaccessible dataset, 2=invalid invocation/environment.

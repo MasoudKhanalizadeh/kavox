@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Create one fully written 1 TiB FIO dataset only when the target file is absent.
 # Existing dataset files are never deleted, truncated, or overwritten by this script.
 

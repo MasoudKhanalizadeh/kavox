@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Single interactive entry point for the complete Kavox workflow.
 
 set -u
@@ -25,6 +28,7 @@ banner() {
     clear 2>/dev/null || true
     echo "============================================================"
     echo " Kavox Lite v0.1.0 — Reproducible FIO Benchmarking"
+    echo " Created and architected by Masoud Khanalizadeh Imani"
     echo "============================================================"
 }
 

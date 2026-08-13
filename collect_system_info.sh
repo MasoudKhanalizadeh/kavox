@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Collect a read-only system snapshot for benchmark reproducibility.
 # Usage: ./collect_system_info.sh OUTPUT_DIR MOUNT_PATHS_CSV [LABEL]
 

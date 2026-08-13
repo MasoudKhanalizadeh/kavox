@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 SHELL := /usr/bin/env bash
 
 .PHONY: check test checksums package

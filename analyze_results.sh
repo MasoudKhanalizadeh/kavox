@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Analyze one Kavox result directory without rerunning FIO.
 # Layer 1: per-LUN and all-LUN aggregation inside every repetition.
 # Layer 2: descriptive statistics across repetitions.
@@ -305,6 +308,7 @@ jq -n --arg schema_version "2.0" --arg generated_at "$(date -Is)" \
 
 {
     echo "KAVOX FIO BENCHMARK FINAL REPORT"
+    echo "Original creator: Masoud Khanalizadeh Imani"
     echo "Generated: $(date -Is)"
     echo "Architecture: $ARCH_LABEL"
     echo "Result directory: $RESULT_DIR"

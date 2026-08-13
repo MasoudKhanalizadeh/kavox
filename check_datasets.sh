@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Masoud Khanalizadeh Imani
+
 # Validate dataset metadata and perform direct sample reads from the beginning,
 # middle and end of every selected 1 TiB dataset.
 
