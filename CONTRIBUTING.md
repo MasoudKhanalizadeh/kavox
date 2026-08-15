@@ -3,6 +3,9 @@
 Contributions are welcome. Please keep changes focused, preserve the dataset
 safety checks, and include a regression test for behavior changes.
 
+Before opening a pull request, see [SUPPORT.md](SUPPORT.md) for the appropriate
+route for bug reports, usage questions, and security concerns.
+
 ## Development checks
 
 ```bash

@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible problem in Kavox
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove credentials, customer data, hostnames, serial numbers, WWNs, and filesystem UUIDs before submitting logs.
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest safe sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Kavox version or commit
+      placeholder: v0.1.0 or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Linux distribution, Bash version, FIO version, filesystem, and relevant architecture details.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Paste only the relevant output after removing sensitive identifiers.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data-safety confirmation
+      options:
+        - label: I removed sensitive infrastructure and customer information from this report.
+          required: true
+        - label: I used dedicated test storage rather than production data or a root filesystem.
+          required: true

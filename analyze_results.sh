@@ -308,7 +308,6 @@ jq -n --arg schema_version "2.0" --arg generated_at "$(date -Is)" \
 
 {
     echo "KAVOX FIO BENCHMARK FINAL REPORT"
-    echo "Original creator: Masoud Khanalizadeh Imani"
     echo "Generated: $(date -Is)"
     echo "Architecture: $ARCH_LABEL"
     echo "Result directory: $RESULT_DIR"
@@ -318,6 +317,7 @@ jq -n --arg schema_version "2.0" --arg generated_at "$(date -Is)" \
     echo "Statistics: arithmetic mean, median, sample SD (n-1), min, max, and CV%."
     echo "Per-repeat aggregation: BW/IOPS sum; average latency is I/O-count weighted."
     echo "Pooled percentiles: JSON+ histograms are merged across all valid LUNs and repetitions."
+    echo "Support: https://github.com/MasoudKhanalizadeh/kavox/issues"
     echo
     echo "PRIMARY STATISTICS"
     printf 'job_id\tjob_name\trepeats\tmetric\tmean\tmedian\tsample_sd\tmin\tmax\tcv_percent\n'

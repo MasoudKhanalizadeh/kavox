@@ -8,5 +8,7 @@ ownership is uncertain. Review the generated `system/`, `run.env`, and metadata
 files before publishing results; they may contain hostnames, UUIDs, serials,
 WWNs, device paths, and SAN topology.
 
-For a suspected safety issue, open a GitHub security advisory instead of a
-public issue when the repository owner has enabled private reporting.
+For a suspected vulnerability or safety issue, use a
+[private GitHub security advisory](https://github.com/MasoudKhanalizadeh/kavox/security/advisories/new)
+instead of a public issue when private reporting is available. For non-sensitive
+bugs and questions, follow [SUPPORT.md](SUPPORT.md).

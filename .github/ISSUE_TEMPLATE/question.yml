@@ -1,0 +1,33 @@
+name: Usage question or feature idea
+description: Ask about Kavox usage or suggest an improvement
+title: "[Question]: "
+body:
+  - type: dropdown
+    id: request_type
+    attributes:
+      label: Request type
+      options:
+        - Usage question
+        - Feature idea
+        - Documentation improvement
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question or idea
+      description: Describe the goal, current behavior, and desired outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include sanitized examples if they help explain the request.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I removed credentials, customer data, and infrastructure identifiers.
+          required: true

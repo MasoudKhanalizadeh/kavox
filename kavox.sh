@@ -28,7 +28,6 @@ banner() {
     clear 2>/dev/null || true
     echo "============================================================"
     echo " Kavox Lite v0.1.0 — Reproducible FIO Benchmarking"
-    echo " Created and architected by Masoud Khanalizadeh Imani"
     echo "============================================================"
 }
 

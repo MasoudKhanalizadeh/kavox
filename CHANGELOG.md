@@ -6,7 +6,7 @@ All notable changes to Kavox Lite are documented here.
 
 ### Changed
 
-- Adopted AGPL-3.0-only licensing, permanent original-author attribution, a trademark policy, and a dual-licensing path before the first public release.
+- Adopted AGPL-3.0-only licensing, standard copyright notices, a trademark policy, and a dual-licensing path before the first public release.
 
 ### Added
 
