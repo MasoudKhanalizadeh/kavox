@@ -4,7 +4,7 @@
 # Copyright (C) 2026 Masoud Khanalizadeh Imani
 
 # Collect a read-only system snapshot for benchmark reproducibility.
-# Usage: ./collect_system_info.sh OUTPUT_DIR MOUNT_PATHS_CSV [LABEL]
+# Usage: ./collect_system_info.sh OUTPUT_DIR MOUNT_PATHS_CSV [LABEL] [DATASET_SIZE]
 
 set -u
 set -o pipefail
@@ -12,10 +12,20 @@ set -o pipefail
 OUTPUT_DIR="${1:-}"
 MOUNT_PATHS_CSV="${2:-}"
 SNAPSHOT_LABEL="${3:-snapshot}"
-DATASET_RELATIVE_PATH="fio-test/fio-data-1TiB.bin"
+DATASET_SIZE_INPUT="${4:-1TiB}"
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+[[ -r "$DATASET_SPEC_LIB" ]] || { echo "Dataset specification library is missing" >&2; exit 2; }
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || {
+    kavox_dataset_size_help >&2
+    echo "Invalid dataset size: $DATASET_SIZE_INPUT" >&2
+    exit 2
+}
 
 if [[ -z "$OUTPUT_DIR" || -z "$MOUNT_PATHS_CSV" ]]; then
-    echo "Usage: $0 OUTPUT_DIR MOUNT_PATHS_CSV [LABEL]" >&2
+    echo "Usage: $0 OUTPUT_DIR MOUNT_PATHS_CSV [LABEL] [DATASET_SIZE]" >&2
     exit 2
 fi
 
@@ -70,16 +80,20 @@ if command -v jq >/dev/null 2>&1; then
         --arg fio_version "$FIO_VERSION" \
         --arg virtualization "$VIRT_VALUE" \
         --arg mount_paths "$MOUNT_PATHS_CSV" \
+        --arg dataset_size_label "$DATASET_SIZE_LABEL" \
+        --argjson dataset_size_bytes "$DATASET_SIZE_BYTES" \
         --argjson uptime_seconds "${UPTIME_SECONDS:-0}" \
         '{schema_version:$schema_version,label:$label,captured_at:$captured_at,
           hostname:$hostname,kernel:$kernel,fio_version:$fio_version,
           virtualization:$virtualization,uptime_seconds:$uptime_seconds,
+          dataset_size_label:$dataset_size_label,dataset_size_bytes:$dataset_size_bytes,
           mount_paths:($mount_paths|split(","))}' \
         > "$OUTPUT_DIR/snapshot.json"
 else
-    printf 'label=%s\ncaptured_at=%s\nhostname=%s\nkernel=%s\nfio_version=%s\nvirtualization=%s\nuptime_seconds=%s\nmount_paths=%s\n' \
+    printf 'label=%s\ncaptured_at=%s\nhostname=%s\nkernel=%s\nfio_version=%s\nvirtualization=%s\nuptime_seconds=%s\ndataset_size_label=%s\ndataset_size_bytes=%s\nmount_paths=%s\n' \
         "$SNAPSHOT_LABEL" "$START_ISO" "$HOSTNAME_VALUE" "$KERNEL_VALUE" \
-        "$FIO_VERSION" "$VIRT_VALUE" "$UPTIME_SECONDS" "$MOUNT_PATHS_CSV" \
+        "$FIO_VERSION" "$VIRT_VALUE" "$UPTIME_SECONDS" "$DATASET_SIZE_LABEL" \
+        "$DATASET_SIZE_BYTES" "$MOUNT_PATHS_CSV" \
         > "$OUTPUT_DIR/snapshot.txt"
 fi
 

@@ -13,9 +13,14 @@ set -o pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 JOBS_DIR="$ROOT_DIR/jobs"
 RESULTS_DIR="$ROOT_DIR/results"
-DATASET_RELATIVE_PATH="fio-test/fio-data-1TiB.bin"
-DATA_SIZE=1099511627776
-RUNNER_VERSION="0.1.0"
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+[[ -r "$DATASET_SPEC_LIB" ]] || { echo "ERROR: dataset specification library is missing" >&2; exit 1; }
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+VERSION_FILE="$ROOT_DIR/VERSION"
+[[ -r "$VERSION_FILE" ]] || { echo "ERROR: VERSION file is missing" >&2; exit 1; }
+RUNNER_VERSION="$(<"$VERSION_FILE")"
+[[ "$RUNNER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "ERROR: invalid VERSION file" >&2; exit 1; }
 
 ARCH_LABEL="${1:-}"
 SELECTED_IDS="${2:-}"
@@ -28,6 +33,7 @@ IOSTAT_INTERVAL="${8:-}"
 QD_POLICY="${9:-}"
 CUSTOM_TOTAL_QD="${10:-}"
 RUN_LABEL_RAW="${11:-}"
+DATASET_SIZE_INPUT="${12:-1TiB}"
 
 die() {
     echo "ERROR: $*" >&2
@@ -57,6 +63,12 @@ normalize_run_label() {
     [[ "$label" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || return 1
     printf '%s\n' "$label"
 }
+
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || {
+    kavox_dataset_size_help >&2
+    die "Invalid dataset size: $DATASET_SIZE_INPUT"
+}
+DATA_SIZE=$DATASET_SIZE_BYTES
 
 read_profile_integer() {
     local job_file="$1"
@@ -286,14 +298,14 @@ for ((LUN_INDEX=0; LUN_INDEX<${#DATA_FILES[@]}; LUN_INDEX++)); do
     [[ "$FS_TYPE" == "xfs" && -n "$FS_UUID" ]] || die "Expected mounted XFS with UUID for $LUN_LABEL."
     [[ -f "$DATA_FILE" && -r "$DATA_FILE" && -w "$DATA_FILE" ]] || die "Dataset is missing or inaccessible: $DATA_FILE"
     FILE_SIZE="$(stat -c %s -- "$DATA_FILE")"
-    (( FILE_SIZE == DATA_SIZE )) || die "Dataset is not exactly 1 TiB: $DATA_FILE"
+    (( FILE_SIZE == DATA_SIZE )) || die "Dataset is not exactly $DATASET_SIZE_LABEL: $DATA_FILE"
     MARKER="${DATA_FILE}.fio-initialized"
     INODE="$(stat -c %i -- "$DATA_FILE" 2>/dev/null || echo 0)"
     if [[ ! -f "$MARKER" ]] || \
        ! grep -Fxq "size_bytes=$DATA_SIZE" "$MARKER" || \
        ! grep -Fxq "filesystem_uuid=$FS_UUID" "$MARKER" || \
        ! grep -Fxq "inode=$INODE" "$MARKER"; then
-        die "Dataset marker is missing or invalid for $LUN_LABEL. Use ./kavox.sh -> Dataset status; do not recreate an existing 1 TiB file."
+        die "Dataset marker is missing or invalid for $LUN_LABEL. Use ./kavox.sh -> Dataset status; do not recreate an existing file."
     fi
 done
 
@@ -387,7 +399,7 @@ case "$QD_POLICY" in
 esac
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-RUN_BASENAME="${ARCH_LABEL}_${#DATA_FILES[@]}lun_${QD_NAME_TAG}_${PROFILE_TAG}_rt${RUNTIME_SECONDS}s_r${REPETITIONS}"
+RUN_BASENAME="${ARCH_LABEL}_${#DATA_FILES[@]}lun_ds-${DATASET_SIZE_LABEL}_${QD_NAME_TAG}_${PROFILE_TAG}_rt${RUNTIME_SECONDS}s_r${REPETITIONS}"
 [[ -n "$RUN_LABEL" ]] && RUN_BASENAME+="_tag-${RUN_LABEL}"
 RUN_BASENAME+="_${TIMESTAMP}"
 (( ${#RUN_BASENAME} <= 240 )) || die "Generated result directory name is too long. Shorten the architecture or run label."
@@ -403,6 +415,7 @@ echo "Repetitions  : $REPETITIONS per job"
 echo "Cooldown     : $COOLDOWN_SECONDS seconds"
 echo "Job count    : ${#SELECTED_JOBS[@]}"
 echo "LUN count    : ${#DATA_FILES[@]}"
+echo "Dataset size : $DATASET_SIZE_LABEL ($DATA_SIZE bytes per LUN)"
 echo "QD policy    : $QD_POLICY"
 [[ "$QD_POLICY" == "custom-total" ]] && echo "Custom QD    : $CUSTOM_TOTAL_QD aggregate"
 echo "Run label    : ${RUN_LABEL:-none}"
@@ -497,6 +510,8 @@ done
     echo "qd_plan=qd_plan.tsv"
     echo "mount_paths=$MOUNT_PATHS_CSV"
     echo "dataset_relative_path=$DATASET_RELATIVE_PATH"
+    echo "dataset_size_label=$DATASET_SIZE_LABEL"
+    echo "dataset_size_bytes=$DATA_SIZE"
     echo "started_at=$(date -Is)"
     echo "hostname=$(hostname 2>/dev/null || echo unknown)"
     echo "kernel=$(uname -r 2>/dev/null || echo unknown)"
@@ -581,7 +596,7 @@ finalize_system_and_analysis() {
         echo "final_status=$reason"
     } >> "$RUN_DIR/run.env"
     log_message "Collecting final system snapshot ($reason)"
-    "$ROOT_DIR/collect_system_info.sh" "$RUN_DIR/system/after" "$MOUNT_PATHS_CSV" "after-$reason" >> "$RUN_LOG" 2>&1 || \
+    "$ROOT_DIR/collect_system_info.sh" "$RUN_DIR/system/after" "$MOUNT_PATHS_CSV" "after-$reason" "$DATASET_SIZE_LABEL" >> "$RUN_LOG" 2>&1 || \
         log_message "WARNING: final system snapshot returned a non-zero exit code"
     {
         echo "System changes selected from before/after snapshots"
@@ -656,7 +671,7 @@ log_message "QD policy: $QD_POLICY; custom aggregate target: ${CUSTOM_TOTAL_QD:-
 log_message "Exact per-job/per-repeat allocation: qd_plan.tsv"
 log_message "iostat requested=$IOSTAT_ENABLED available=$IOSTAT_AVAILABLE interval=${IOSTAT_INTERVAL}s"
 log_message "Collecting full pre-test system snapshot"
-"$ROOT_DIR/collect_system_info.sh" "$RUN_DIR/system/before" "$MOUNT_PATHS_CSV" "before-run" >> "$RUN_LOG" 2>&1 || \
+"$ROOT_DIR/collect_system_info.sh" "$RUN_DIR/system/before" "$MOUNT_PATHS_CSV" "before-run" "$DATASET_SIZE_LABEL" >> "$RUN_LOG" 2>&1 || \
     log_message "WARNING: pre-test system snapshot returned a non-zero exit code"
 
 TOTAL_JOBS="${#SELECTED_JOBS[@]}"
@@ -700,11 +715,15 @@ for JOB_FILE in "${SELECTED_JOBS[@]}"; do
 
             calculate_qd_allocation "$SOURCE_NUMJOBS" "$SOURCE_IODEPTH" "$LUN_INDEX" "$REPEAT_NUMBER"
 
-            awk -v dataset="$DATA_FILE" -v applied_numjobs="$APPLIED_NUMJOBS" \
+            awk -v dataset="$DATA_FILE" -v dataset_size="$DATA_SIZE" \
+                -v applied_numjobs="$APPLIED_NUMJOBS" \
                 -v applied_iodepth="$APPLIED_IODEPTH" '
-                BEGIN { filename_replaced=0; numjobs_replaced=0; iodepth_replaced=0 }
+                BEGIN { filename_replaced=0; size_replaced=0; numjobs_replaced=0; iodepth_replaced=0 }
                 /^[[:space:]]*filename[[:space:]]*=/ {
                     print "filename=" dataset; filename_replaced=1; next
+                }
+                /^[[:space:]]*size[[:space:]]*=/ {
+                    print "size=" dataset_size; size_replaced=1; next
                 }
                 /^[[:space:]]*numjobs[[:space:]]*=/ {
                     print "numjobs=" applied_numjobs; numjobs_replaced=1; next
@@ -714,9 +733,9 @@ for JOB_FILE in "${SELECTED_JOBS[@]}"; do
                 }
                 { print }
                 END {
-                    if (filename_replaced != 1 || numjobs_replaced != 1 || iodepth_replaced != 1) exit 42
+                    if (filename_replaced != 1 || size_replaced != 1 || numjobs_replaced != 1 || iodepth_replaced != 1) exit 42
                 }
-            ' "$JOB_FILE" > "$RENDERED_JOB" || die "Cannot render dataset path for: $JOB_FILE"
+            ' "$JOB_FILE" > "$RENDERED_JOB" || die "Cannot render dataset path, size, or QD for: $JOB_FILE"
 
             sha256sum "$RENDERED_JOB" > "$RENDERED_JOB.sha256"
             printf 'qd_policy=%s\nsource_numjobs=%s\nsource_iodepth=%s\nsource_qd=%s\n' \

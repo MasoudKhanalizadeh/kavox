@@ -6,8 +6,8 @@
 Reproducible, safety-focused storage benchmarking with FIO on Linux, bare metal,
 virtual machines, and parallel LUNs.
 
-> **Destructive I/O warning:** dataset preparation performs a real 1 TiB write
-> on every selected target. Write and mixed benchmark profiles modify the
+> **Destructive I/O warning:** dataset preparation performs a real write of the
+> configured dataset size on every selected target. Write and mixed profiles modify the
 > dataset. Use dedicated test storage only—never a root filesystem or production
 > data path.
 
@@ -23,6 +23,7 @@ output names.
 ## Features
 
 - One interactive entry point for configuration, datasets, runs, analysis, and comparison
+- Configurable per-LUN dataset size from `64MiB` through `1PiB` using aligned binary units
 - 19 bundled random, sequential, mixed, and Zipf profiles
 - Parallel execution across multiple LUNs, with serial jobs and repetitions
 - Exact aggregate-QD normalization for fair single-LUN versus multi-LUN comparisons
@@ -70,20 +71,40 @@ Configuration -> Dependency check -> Dataset status -> Read-only samples
 -> Optional metadata -> Job selection -> Benchmark -> Analysis
 ```
 
+## Dataset size
+
+Kavox asks for the dataset size during environment configuration. Use a whole
+number with an explicit binary unit, for example:
+
+```text
+512MiB
+20GiB
+500GiB
+1TiB
+```
+
+The minimum is `64MiB`, and every value must be aligned to `1MiB`. Decimal units
+such as `GB` and fractional inputs such as `1.5TiB` are rejected to avoid unit
+ambiguity and direct-I/O alignment errors. The default remains `1TiB`.
+
+Each size has an isolated file and marker. Selecting `20GiB` uses
+`fio-data-20GiB.bin`; selecting another size never truncates or overwrites an
+existing dataset of a different size.
+
 ## Dataset safety model
 
 Each target uses:
 
 ```text
-MOUNT_PATH/fio-test/fio-data-1TiB.bin
+MOUNT_PATH/fio-test/fio-data-SIZE.bin
 ```
 
 Kavox classifies it before any run:
 
 | State | Meaning | Automatic action |
 | --- | --- | --- |
-| `READY` | Exact 1 TiB file and matching marker | Safe to benchmark |
-| `RECOVERABLE` | Exact 1 TiB file without a valid marker | Protect file; allow marker repair only after explicit trust |
+| `READY` | Exact configured-size file and matching marker | Safe to benchmark |
+| `RECOVERABLE` | Exact configured-size file without a valid marker | Protect file; allow marker repair only after explicit trust |
 | `MISSING` | Dataset does not exist | Allow initialization after typed confirmation |
 | `WRONG SIZE/CONFLICT` | Unexpected file or path state | Stop for manual inspection |
 
@@ -108,7 +129,7 @@ in `qd_plan.tsv`, per-LUN environment files, and rendered FIO job files.
 Example:
 
 ```text
-baremetal_3lun_qd-equal-profile_jobs-01-03-15_rt300s_r3_tag-raid5-pool-a_20260812-003015
+baremetal_3lun_ds-500GiB_qd-equal-profile_jobs-01-03-15_rt300s_r3_tag-raid5-pool-a_20260819-003015
 ```
 
 ```text
@@ -147,8 +168,12 @@ The interactive menu is recommended. Advanced users may call the runner:
   5 \
   normalize-profile \
   '' \
-  raid5-pool-a
+  raid5-pool-a \
+  500GiB
 ```
+
+The final two direct-runner arguments are the optional run label and dataset
+size. The interactive `./kavox.sh` workflow stores both values automatically.
 
 The final typed `YES` confirmation remains mandatory.
 
@@ -169,7 +194,7 @@ review and anonymize any result package before sharing it publicly.
 
 ## Project status
 
-This repository is the first public release, **Kavox Lite v0.1.0**. The Lite
+The current release is **Kavox Lite v0.2.0**. The Lite
 edition is the practical local runner. Future full-Kavox work may add SSH test
 orchestration, resume/continue, declarative suites, and centralized result
 tracking.

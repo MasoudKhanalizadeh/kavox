@@ -6,7 +6,7 @@
 ابزار Bash-only برای اجرای تکرارپذیر تست‌های ذخیره‌سازی با FIO روی Linux،
 Bare Metal، ماشین مجازی و چند LUN موازی.
 
-> هشدار: آماده‌سازی Dataset یک نوشتن واقعی 1 TiB روی هر مسیر انتخابی انجام می‌دهد
+> هشدار: آماده‌سازی Dataset به‌اندازه مقدار تنظیم‌شده روی هر مسیر انتخابی نوشتن واقعی انجام می‌دهد
 > و Jobهای Write/Mixed محتوای Dataset را تغییر می‌دهند. این ابزار را فقط روی
 > فضای اختصاصی تست اجرا کنید؛ هرگز مسیر فایل‌سیستم Root یا دادهٔ تولیدی را ندهید.
 
@@ -15,6 +15,7 @@ Bare Metal، ماشین مجازی و چند LUN موازی.
 ## قابلیت‌ها
 
 - یک منوی تعاملی برای پیکربندی، آماده‌سازی Dataset، اجرا، تحلیل و مقایسه؛
+- اندازه قابل‌تنظیم Dataset برای هر LUN با واحدهای باینری هم‌تراز؛
 - ۱۹ Profile آماده شامل Random، Sequential، Mixed و Zipf؛
 - اجرای موازی روی چند LUN و اجرای ترتیبی Jobها و Repeatها؛
 - سه سیاست Queue Depth: برابری QD کل، QD کل سفارشی و QD ثابت به‌ازای هر LUN؛
@@ -63,16 +64,36 @@ Configuration -> Dependency check -> Dataset status -> Read-only samples
 -> Optional metadata -> Job selection -> Benchmark -> Analysis
 ```
 
+## اندازه Dataset
+
+هنگام پیکربندی محیط، Kavox اندازه Dataset هر LUN را می‌پرسد. مقدار باید عدد
+صحیح و دارای یکی از واحدهای باینری `MiB`، `GiB` یا `TiB` باشد؛ برای مثال:
+
+```text
+512MiB
+20GiB
+500GiB
+1TiB
+```
+
+حداقل اندازه `64MiB` است و مقدار باید بر `1MiB` بخش‌پذیر باشد. واحدهای مبهم
+مانند `GB` و مقادیر اعشاری مانند `1.5TiB` پذیرفته نمی‌شوند. مقدار پیش‌فرض
+همچنان `1TiB` است.
+
+برای هر اندازه، فایل و Marker جداگانه ساخته می‌شود؛ مثلاً `20GiB` از فایل
+`fio-data-20GiB.bin` استفاده می‌کند. تغییر اندازه هیچ Dataset موجود با اندازه
+دیگر را Truncate یا Overwrite نمی‌کند.
+
 Dataset هر LUN در مسیر زیر قرار می‌گیرد:
 
 ```text
-MOUNT_PATH/fio-test/fio-data-1TiB.bin
+MOUNT_PATH/fio-test/fio-data-SIZE.bin
 ```
 
 وضعیت‌ها:
 
-- `READY`: اندازه دقیق 1 TiB و Marker معتبر؛
-- `RECOVERABLE`: فایل 1 TiB موجود است اما Marker معتبر ندارد و بازنویسی نمی‌شود؛
+- `READY`: فایل با اندازه تنظیم‌شده و Marker معتبر؛
+- `RECOVERABLE`: فایل هم‌اندازه موجود است اما Marker معتبر ندارد و بازنویسی نمی‌شود؛
 - `MISSING`: فایل وجود ندارد و می‌تواند پس از تأیید صریح ساخته شود؛
 - `WRONG SIZE/CONFLICT`: توقف ایمن برای بررسی دستی.
 
@@ -90,7 +111,7 @@ MOUNT_PATH/fio-test/fio-data-1TiB.bin
 نمونهٔ نام Result:
 
 ```text
-baremetal_3lun_qd-equal-profile_jobs-01-03-15_rt300s_r3_tag-raid5-pool-a_20260812-003015
+baremetal_3lun_ds-500GiB_qd-equal-profile_jobs-01-03-15_rt300s_r3_tag-raid5-pool-a_20260819-003015
 ```
 
 ساختار خلاصه:
@@ -131,7 +152,7 @@ make test
 
 ## وضعیت پروژه
 
-این مخزن نسخهٔ اولیهٔ عمومی **Kavox Lite v0.1.0** است. Kavox Lite هستهٔ عملیاتی
+نسخه فعلی **Kavox Lite v0.2.0** است. Kavox Lite هستهٔ عملیاتی
 و سادهٔ Runner است؛ توسعهٔ آینده می‌تواند مدیریت اجرای SSH، Resume/Continue،
 تعریف Suite و Result Tracking مرکزی را به نسخهٔ کامل Kavox اضافه کند.
 

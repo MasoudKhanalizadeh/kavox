@@ -3,22 +3,33 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright (C) 2026 Masoud Khanalizadeh Imani
 
-# Create one fully written 1 TiB FIO dataset only when the target file is absent.
+# Create one fully written, configurable-size FIO dataset only when absent.
 # Existing dataset files are never deleted, truncated, or overwritten by this script.
 
 set -u
 set -o pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DATASET_RELATIVE_PATH="fio-test/fio-data-1TiB.bin"
-DATA_SIZE=1099511627776
-MIN_FREE_BYTES=$((DATA_SIZE + 1073741824))
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+[[ -r "$DATASET_SPEC_LIB" ]] || { echo "ERROR: dataset specification library is missing" >&2; exit 1; }
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+
 MOUNT_PATHS_ARGUMENT="${1:-}"
+DATASET_SIZE_INPUT="${2:-1TiB}"
 
 fail() {
     echo "ERROR: $*" >&2
     exit 1
 }
+
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || {
+    kavox_dataset_size_help >&2
+    fail "invalid dataset size: $DATASET_SIZE_INPUT"
+}
+kavox_configure_free_space_reserve
+DATA_SIZE=$DATASET_SIZE_BYTES
+MIN_FREE_BYTES=$DATASET_MIN_FREE_BYTES
 
 read_mount_paths() {
     MOUNT_PATHS=()
@@ -111,7 +122,7 @@ for ((INDEX = 0; INDEX < ${#DATA_FILES[@]}; INDEX++)); do
     elif [[ -f "$DATA_FILE" ]]; then
         ACTUAL_SIZE="$(stat -c %s -- "$DATA_FILE" 2>/dev/null || echo 0)"
         if [[ "$ACTUAL_SIZE" == "$DATA_SIZE" ]]; then
-            echo "  ${LUN_LABELS[$INDEX]}: PROTECTED EXISTING 1 TiB FILE - NOT WRITTEN"
+            echo "  ${LUN_LABELS[$INDEX]}: PROTECTED EXISTING $DATASET_SIZE_LABEL FILE - NOT WRITTEN"
             echo "      $DATA_FILE"
             echo "      Marker is missing or mismatched; use repair_dataset_markers.sh."
             PROTECTED_INDEXES+=("$INDEX")
@@ -134,7 +145,7 @@ if (( ${#PROTECTED_INDEXES[@]} > 0 || ${#CONFLICT_INDEXES[@]} > 0 )); then
     echo
     echo "SAFETY STOP: at least one selected path already exists but is not READY."
     echo "No existing dataset or marker was changed, deleted, truncated, or overwritten."
-    echo "For an exact 1 TiB file, run repair_dataset_markers.sh after verifying its origin."
+    echo "For an exact $DATASET_SIZE_LABEL file, run repair_dataset_markers.sh after verifying its origin."
     echo "For a wrong-size/conflicting path, inspect it manually and move it out of the way if appropriate."
     exit 3
 fi
@@ -150,7 +161,7 @@ for INDEX in "${PENDING_INDEXES[@]}"; do
     AVAILABLE_BYTES="$(df -B1 --output=avail "$MOUNT_PATH" | awk 'NR==2 {gsub(/[[:space:]]/, "", $0); print $0}')"
     [[ "$AVAILABLE_BYTES" =~ ^[0-9]+$ ]] || fail "cannot determine free space on $MOUNT_PATH"
     (( AVAILABLE_BYTES >= MIN_FREE_BYTES )) || \
-        fail "${LUN_LABELS[$INDEX]} needs at least 1 TiB plus 1 GiB free space"
+        fail "${LUN_LABELS[$INDEX]} needs at least $MIN_FREE_BYTES bytes free ($DATASET_SIZE_LABEL dataset plus reserve)"
 
     mkdir -p -- "$(dirname -- "${DATA_FILES[$INDEX]}")"
     WRITE_TEST="$(dirname -- "${DATA_FILES[$INDEX]}")/.fio-write-test.$$"
@@ -159,7 +170,7 @@ for INDEX in "${PENDING_INDEXES[@]}"; do
 done
 
 echo
-echo "This performs a real sequential write of 1 TiB on each pending LUN."
+echo "This performs a real sequential write of $DATASET_SIZE_LABEL ($DATA_SIZE bytes) on each pending LUN."
 echo "All pending LUNs will be initialized in parallel."
 echo "WARNING: this is heavy write I/O and may take a long time."
 echo "Existing files are protected and cannot reach this step."
@@ -218,6 +229,7 @@ for INDEX in "${PENDING_INDEXES[@]}"; do
     {
         echo "Kavox managed FIO dataset"
         echo "size_bytes=$DATA_SIZE"
+        echo "size_label=$DATASET_SIZE_LABEL"
         echo "filesystem_uuid=${FILESYSTEM_UUIDS[$INDEX]}"
         echo "inode=$INODE"
         echo "initialized_at=$(date -Is)"
