@@ -30,7 +30,7 @@ printf 'YES\n' | "$SUITE/run_tests.sh" baremetal 01,03 1 "$mount_csv" 3 0 no 1 \
     normalize-profile >/dev/null
 
 run_dir="$(find "$SUITE/results" -mindepth 1 -maxdepth 1 -type d \
-    -name 'baremetal_3lun_qd-equal-profile_jobs-01-03_rt1s_r3_*' -print -quit)"
+    -name 'baremetal_3lun_ds-1TiB_qd-equal-profile_jobs-01-03_rt1s_r3_*' -print -quit)"
 [[ -n "$run_dir" && -f "$run_dir/qd_plan.tsv" ]]
 
 # 2 profiles x 3 repeats x 3 LUNs, plus the header.
@@ -65,7 +65,7 @@ grep -Fxq 'aggregate_target_qd=16' \
 printf 'YES\n' | "$SUITE/run_tests.sh" customtest 01,03 1 "$mount_csv" 1 0 no 1 \
     custom-total 240 >/dev/null
 custom_dir="$(find "$SUITE/results" -mindepth 1 -maxdepth 1 -type d \
-    -name 'customtest_3lun_qd-total-240_jobs-01-03_rt1s_r1_*' -print -quit)"
+    -name 'customtest_3lun_ds-1TiB_qd-total-240_jobs-01-03_rt1s_r1_*' -print -quit)"
 awk -F '\t' '
     NR > 1 { sum[$2 SUBSEP $3] += $11 }
     END { for (key in sum) if (sum[key] != 240) exit 1 }
@@ -77,7 +77,7 @@ grep -Fxq 'iodepth=16' "$custom_dir/01_rand_read_300k/repeat-01/lun-01.fio"
 printf 'YES\n' | "$SUITE/run_tests.sh" scaletest 01 1 "$mount_csv" 1 0 no 1 \
     per-lun-profile >/dev/null
 scale_dir="$(find "$SUITE/results" -mindepth 1 -maxdepth 1 -type d \
-    -name 'scaletest_3lun_qd-perlun-profile_jobs-01_rt1s_r1_*' -print -quit)"
+    -name 'scaletest_3lun_ds-1TiB_qd-perlun-profile_jobs-01_rt1s_r1_*' -print -quit)"
 awk -F '\t' 'NR > 1 {sum += $11} END {exit !(sum == 768)}' "$scale_dir/qd_plan.tsv"
 grep -Fxq 'numjobs=16' "$scale_dir/01_rand_read_300k/repeat-01/lun-03.fio"
 grep -Fxq 'iodepth=16' "$scale_dir/01_rand_read_300k/repeat-01/lun-03.fio"

@@ -10,14 +10,25 @@
 set -u
 set -o pipefail
 
-DATASET_RELATIVE_PATH="fio-test/fio-data-1TiB.bin"
-DATA_SIZE=1099511627776
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+[[ -r "$DATASET_SPEC_LIB" ]] || { echo "ERROR: dataset specification library is missing" >&2; exit 2; }
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+
 MOUNT_PATHS_ARGUMENT="${1:-}"
+DATASET_SIZE_INPUT="${2:-1TiB}"
 
 fail() {
     echo "ERROR: $*" >&2
     exit 2
 }
+
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || {
+    kavox_dataset_size_help >&2
+    fail "invalid dataset size: $DATASET_SIZE_INPUT"
+}
+DATA_SIZE=$DATASET_SIZE_BYTES
 
 read_mount_paths() {
     MOUNT_PATHS=()
@@ -108,10 +119,10 @@ for ((INDEX=0; INDEX<${#MOUNT_PATHS[@]}; INDEX++)); do
          grep -Fxq "size_bytes=$DATA_SIZE" "$MARKER" && \
          grep -Fxq "filesystem_uuid=$FS_UUID" "$MARKER" && \
          grep -Fxq "inode=$INODE" "$MARKER"; then
-        echo "  READY $LUN_LABEL: valid 1 TiB dataset and marker - $DATA_FILE"
+        echo "  READY $LUN_LABEL: valid $DATASET_SIZE_LABEL dataset and marker - $DATA_FILE"
         READY_COUNT=$((READY_COUNT+1))
     else
-        echo "  RECOVERABLE $LUN_LABEL: existing 1 TiB file is protected; marker needs repair"
+        echo "  RECOVERABLE $LUN_LABEL: existing $DATASET_SIZE_LABEL file is protected; marker needs repair"
         echo "      $DATA_FILE"
         RECOVERABLE_COUNT=$((RECOVERABLE_COUNT+1))
     fi

@@ -32,7 +32,7 @@ set +e
 prepare_rc=$?
 set -e
 [[ "$prepare_rc" -eq 3 ]]
-grep -Fq 'PROTECTED EXISTING 1 TiB FILE - NOT WRITTEN' "$TEST_ROOT/prepare-protected.txt"
+grep -Fq 'PROTECTED EXISTING 1TiB FILE - NOT WRITTEN' "$TEST_ROOT/prepare-protected.txt"
 [[ ! -e "${dataset}.fio-initialized" ]]
 [[ "$(stat -c '%i:%s:%Y:%b' -- "$dataset")" == "$before_state" ]]
 
@@ -48,7 +48,7 @@ grep -Fq 'READY' "$TEST_ROOT/status-after.txt"
 grep -Fq 'Nothing was written.' "$TEST_ROOT/prepare-ready.txt"
 
 printf '0\n' | TERM=dumb "$SUITE/kavox.sh" > "$TEST_ROOT/menu.txt"
-grep -Fq 'Kavox Lite v0.1.0' "$TEST_ROOT/menu.txt"
+grep -Fq 'Kavox Lite v0.2.0' "$TEST_ROOT/menu.txt"
 grep -Fq 'Goodbye.' "$TEST_ROOT/menu.txt"
 
 echo "PASS: Kavox dataset no-overwrite safety and interactive-menu test"

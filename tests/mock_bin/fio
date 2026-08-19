@@ -15,6 +15,19 @@ for argument in "$@"; do
     esac
 done
 if [[ -z "$output_file" ]]; then
+    job_file=""
+    for argument in "$@"; do
+        [[ -f "$argument" ]] && job_file="$argument"
+    done
+    if [[ -n "$job_file" ]] && grep -q '^\[prepare_' "$job_file"; then
+        dataset_size="$(awk -F '=' '$1 == "size" {print $2; exit}' "$job_file")"
+        while IFS='=' read -r key dataset_path; do
+            [[ "$key" == "filename" ]] || continue
+            truncate -s "$dataset_size" "$dataset_path"
+        done < "$job_file"
+        echo "mock fio dataset preparation completed"
+        exit 0
+    fi
     echo "mock fio read-only dataset sample completed"
     exit 0
 fi

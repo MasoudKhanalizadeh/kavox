@@ -4,23 +4,34 @@
 # Copyright (C) 2026 Masoud Khanalizadeh Imani
 
 # Validate dataset metadata and perform direct sample reads from the beginning,
-# middle and end of every selected 1 TiB dataset.
+# middle and end of every selected configurable-size dataset.
 
 set -u
 set -o pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DATASET_RELATIVE_PATH="fio-test/fio-data-1TiB.bin"
-DATA_SIZE=1099511627776
-SAMPLE_SIZE=67108864
-MIDDLE_OFFSET=$((DATA_SIZE / 2))
-END_OFFSET=$((DATA_SIZE - SAMPLE_SIZE))
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+[[ -r "$DATASET_SPEC_LIB" ]] || { echo "ERROR: dataset specification library is missing" >&2; exit 1; }
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+
 MOUNT_PATHS_ARGUMENT="${1:-}"
+DATASET_SIZE_INPUT="${2:-1TiB}"
 
 fail() {
     echo "ERROR: $*" >&2
     exit 1
 }
+
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || {
+    kavox_dataset_size_help >&2
+    fail "invalid dataset size: $DATASET_SIZE_INPUT"
+}
+kavox_configure_sample_regions || fail "cannot calculate aligned sample regions"
+DATA_SIZE=$DATASET_SIZE_BYTES
+SAMPLE_SIZE=$DATASET_SAMPLE_SIZE_BYTES
+MIDDLE_OFFSET=$DATASET_MIDDLE_OFFSET_BYTES
+END_OFFSET=$DATASET_END_OFFSET_BYTES
 
 MOUNT_PATHS=()
 if [[ -n "$MOUNT_PATHS_ARGUMENT" ]]; then
@@ -168,4 +179,4 @@ FIO_RC=${PIPESTATUS[0]}
 echo
 echo "All datasets passed metadata and direct-read checks."
 echo "Check log: $OUTPUT_FILE"
-echo "Note: this confirms preparation state and readability; it is not a full 1 TiB checksum scan."
+echo "Note: this confirms preparation state and readability; it is not a full $DATASET_SIZE_LABEL checksum scan."

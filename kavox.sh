@@ -13,6 +13,18 @@ CONFIG_FILE="$ROOT_DIR/benchmark_config.tsv"
 METADATA_FILE="$ROOT_DIR/benchmark_metadata.tsv"
 METADATA_TEMPLATE="$ROOT_DIR/benchmark_metadata.example.tsv"
 RESULTS_DIR="$ROOT_DIR/results"
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+VERSION_FILE="$ROOT_DIR/VERSION"
+
+[[ -r "$DATASET_SPEC_LIB" ]] || {
+    echo "Dataset specification library is missing: $DATASET_SPEC_LIB" >&2
+    exit 1
+}
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+[[ -r "$VERSION_FILE" ]] || { echo "VERSION file is missing" >&2; exit 1; }
+KAVOX_VERSION="$(<"$VERSION_FILE")"
+[[ "$KAVOX_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid VERSION file" >&2; exit 1; }
 
 ARCHITECTURE="baremetal"
 MOUNT_PATHS_CSV=""
@@ -23,11 +35,13 @@ IOSTAT_ENABLED="yes"
 IOSTAT_INTERVAL="5"
 QD_POLICY="normalize-profile"
 CUSTOM_TOTAL_QD=""
+DATASET_SIZE_INPUT="1TiB"
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || exit 1
 
 banner() {
     clear 2>/dev/null || true
     echo "============================================================"
-    echo " Kavox Lite v0.1.0 — Reproducible FIO Benchmarking"
+    echo " Kavox Lite v$KAVOX_VERSION — Reproducible FIO Benchmarking"
     echo "============================================================"
 }
 
@@ -64,6 +78,7 @@ normalize_mount_csv() {
 load_config() {
     [[ -f "$CONFIG_FILE" ]] || return 1
     local key value extra
+    DATASET_SIZE_INPUT="1TiB"
     while IFS=$'\t' read -r key value extra; do
         case "$key" in
             architecture) ARCHITECTURE="$value" ;;
@@ -75,6 +90,7 @@ load_config() {
             iostat_interval) IOSTAT_INTERVAL="$value" ;;
             qd_policy) QD_POLICY="$value" ;;
             custom_total_qd) CUSTOM_TOTAL_QD="$value" ;;
+            dataset_size) DATASET_SIZE_INPUT="$value" ;;
         esac
     done < "$CONFIG_FILE"
 
@@ -85,6 +101,8 @@ load_config() {
     [[ "$COOLDOWN_SECONDS" =~ ^[0-9]+$ ]] || return 1
     [[ "$IOSTAT_ENABLED" == "yes" || "$IOSTAT_ENABLED" == "no" ]] || return 1
     [[ "$IOSTAT_INTERVAL" =~ ^[1-9][0-9]*$ ]] || return 1
+    kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || return 1
+    DATASET_SIZE_INPUT="$DATASET_SIZE_LABEL"
     [[ "$QD_POLICY" == "normalize-profile" || "$QD_POLICY" == "custom-total" || \
        "$QD_POLICY" == "per-lun-profile" ]] || return 1
     if [[ "$QD_POLICY" == "custom-total" ]]; then
@@ -106,6 +124,7 @@ save_config() {
         printf 'iostat_interval\t%s\n' "$IOSTAT_INTERVAL"
         printf 'qd_policy\t%s\n' "$QD_POLICY"
         printf 'custom_total_qd\t%s\n' "$CUSTOM_TOTAL_QD"
+        printf 'dataset_size\t%s\n' "$DATASET_SIZE_LABEL"
     } > "$temporary"
     mv -- "$temporary" "$CONFIG_FILE"
 }
@@ -114,9 +133,9 @@ auto_discover_mounts() {
     local discovered=""
     local dataset mount_path
     while IFS= read -r dataset; do
-        mount_path="${dataset%/fio-test/fio-data-1TiB.bin}"
+        mount_path="${dataset%/$DATASET_RELATIVE_PATH}"
         discovered+="${discovered:+,}$mount_path"
-    done < <(find /mnt -mindepth 3 -maxdepth 3 -type f -path '*/fio-test/fio-data-1TiB.bin' -print 2>/dev/null | sort)
+    done < <(find /mnt -mindepth 3 -maxdepth 3 -type f -path "*/$DATASET_RELATIVE_PATH" -print 2>/dev/null | sort)
     printf '%s\n' "$discovered"
 }
 
@@ -127,7 +146,7 @@ configure_environment() {
     echo "Architecture:"
     echo "  1) Bare Metal"
     echo "  2) ESXi VM"
-    local architecture_default=1
+    local architecture_default=1 value
     [[ "$ARCHITECTURE" == "esxi" ]] && architecture_default=2
     read -r -p "Choice [$architecture_default]: " choice
     case "${choice:-}" in
@@ -136,6 +155,19 @@ configure_environment() {
         2) ARCHITECTURE="esxi" ;;
         *) echo "Invalid choice."; return 1 ;;
     esac
+
+    echo
+    echo "Dataset size per LUN:"
+    kavox_dataset_size_help
+    read -r -p "Dataset size [$DATASET_SIZE_LABEL]: " value
+    value="${value:-$DATASET_SIZE_LABEL}"
+    if ! kavox_configure_dataset_spec "$value"; then
+        echo "Invalid dataset size."
+        kavox_dataset_size_help
+        return 1
+    fi
+    DATASET_SIZE_INPUT="$DATASET_SIZE_LABEL"
+    echo "Dataset path on each LUN: MOUNT_PATH/$DATASET_RELATIVE_PATH"
 
     local -a current_mounts=()
     if [[ -z "$MOUNT_PATHS_CSV" ]]; then
@@ -149,7 +181,7 @@ configure_environment() {
     lun_count="${lun_count:-$default_count}"
     [[ "$lun_count" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid LUN count."; return 1; }
 
-    local new_mounts="" default_path path index value
+    local new_mounts="" default_path path index
     for ((index=1; index<=lun_count; index++)); do
         default_path="${current_mounts[$((index-1))]:-}"
         if [[ -z "$default_path" && "$lun_count" == "1" ]]; then default_path="/mnt/storage"; fi
@@ -216,6 +248,8 @@ configure_environment() {
 
 show_config() {
     echo "  Architecture : $ARCHITECTURE"
+    echo "  Dataset size : $DATASET_SIZE_LABEL ($DATASET_SIZE_BYTES bytes per LUN)"
+    echo "  Dataset file : $DATASET_RELATIVE_PATH"
     echo "  Mount paths  : $MOUNT_PATHS_CSV"
     echo "  Runtime      : $RUNTIME_SECONDS seconds"
     echo "  Repetitions  : $REPETITIONS"
@@ -259,26 +293,26 @@ check_dependencies() {
 
 dataset_status() {
     ensure_config || return 1
-    "$ROOT_DIR/dataset_status.sh" "$MOUNT_PATHS_CSV"
+    "$ROOT_DIR/dataset_status.sh" "$MOUNT_PATHS_CSV" "$DATASET_SIZE_LABEL"
 }
 
 check_datasets() {
     ensure_config || return 1
-    if ! "$ROOT_DIR/dataset_status.sh" "$MOUNT_PATHS_CSV"; then
+    if ! "$ROOT_DIR/dataset_status.sh" "$MOUNT_PATHS_CSV" "$DATASET_SIZE_LABEL"; then
         echo "Dataset check stopped before FIO sample reads. Use Dataset preparation/marker repair as indicated."
         return 1
     fi
-    "$ROOT_DIR/check_datasets.sh" "$MOUNT_PATHS_CSV"
+    "$ROOT_DIR/check_datasets.sh" "$MOUNT_PATHS_CSV" "$DATASET_SIZE_LABEL"
 }
 
 prepare_missing_datasets() {
     ensure_config || return 1
-    "$ROOT_DIR/prepare_datasets.sh" "$MOUNT_PATHS_CSV"
+    "$ROOT_DIR/prepare_datasets.sh" "$MOUNT_PATHS_CSV" "$DATASET_SIZE_LABEL"
 }
 
 repair_markers() {
     ensure_config || return 1
-    "$ROOT_DIR/repair_dataset_markers.sh" "$MOUNT_PATHS_CSV"
+    "$ROOT_DIR/repair_dataset_markers.sh" "$MOUNT_PATHS_CSV" "$DATASET_SIZE_LABEL"
 }
 
 guided_metadata_editor() {
@@ -331,7 +365,7 @@ run_benchmark() {
     echo "Datasets are READY. The benchmark runner will now ask which jobs to run."
     "$ROOT_DIR/run_tests.sh" "$ARCHITECTURE" "" "$RUNTIME_SECONDS" "$MOUNT_PATHS_CSV" \
         "$REPETITIONS" "$COOLDOWN_SECONDS" "$IOSTAT_ENABLED" "$IOSTAT_INTERVAL" \
-        "$QD_POLICY" "$CUSTOM_TOTAL_QD"
+        "$QD_POLICY" "$CUSTOM_TOTAL_QD" "" "$DATASET_SIZE_LABEL"
 }
 
 select_result_directory() {
@@ -405,7 +439,7 @@ guided_workflow() {
     echo
     "$ROOT_DIR/run_tests.sh" "$ARCHITECTURE" "" "$RUNTIME_SECONDS" "$MOUNT_PATHS_CSV" \
         "$REPETITIONS" "$COOLDOWN_SECONDS" "$IOSTAT_ENABLED" "$IOSTAT_INTERVAL" \
-        "$QD_POLICY" "$CUSTOM_TOTAL_QD"
+        "$QD_POLICY" "$CUSTOM_TOTAL_QD" "" "$DATASET_SIZE_LABEL"
 }
 
 main_menu() {
@@ -415,11 +449,11 @@ main_menu() {
         if [[ -n "$MOUNT_PATHS_CSV" ]]; then show_config; else echo "  Environment is not configured yet."; fi
         echo
         echo "  1) Guided workflow: preflight -> dataset check -> metadata -> benchmark"
-        echo "  2) Configure architecture, LUNs, QD policy, repeats, runtime, and iostat"
+        echo "  2) Configure architecture, dataset size, LUNs, QD, repeats, runtime, and iostat"
         echo "  3) Dataset status (read-only, no FIO)"
         echo "  4) Validate datasets (read-only sample reads)"
         echo "  5) Prepare missing datasets only"
-        echo "  6) Repair markers for protected existing 1 TiB files"
+        echo "  6) Repair markers for protected existing exact-size files"
         echo "  7) Edit benchmark metadata"
         echo "  8) Run benchmark (includes safety checks)"
         echo "  9) Recover and analyze an existing result again"

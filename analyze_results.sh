@@ -20,6 +20,10 @@ command -v jq >/dev/null 2>&1 || { echo "jq is required for JSON analysis." >&2;
 
 ARCH_LABEL="$(sed -n 's/^architecture=//p' "$RESULT_DIR/run.env" 2>/dev/null | head -n 1)"
 ARCH_LABEL="${ARCH_LABEL:-unknown}"
+DATASET_SIZE_LABEL="$(sed -n 's/^dataset_size_label=//p' "$RESULT_DIR/run.env" 2>/dev/null | head -n 1)"
+DATASET_SIZE_LABEL="${DATASET_SIZE_LABEL:-unknown}"
+DATASET_SIZE_BYTES="$(sed -n 's/^dataset_size_bytes=//p' "$RESULT_DIR/run.env" 2>/dev/null | head -n 1)"
+[[ "$DATASET_SIZE_BYTES" =~ ^[1-9][0-9]*$ ]] || DATASET_SIZE_BYTES=0
 EXPECTED_LUNS="$(sed -n 's/^lun_count=//p' "$RESULT_DIR/run.env" 2>/dev/null | head -n 1)"
 EXPECTED_REPETITIONS="$(sed -n 's/^repetitions=//p' "$RESULT_DIR/run.env" 2>/dev/null | head -n 1)"
 [[ "$EXPECTED_LUNS" =~ ^[1-9][0-9]*$ ]] || EXPECTED_LUNS=0
@@ -290,6 +294,7 @@ BEFORE_SNAPSHOT="$RESULT_DIR/system/before/snapshot.json"
 AFTER_SNAPSHOT="$RESULT_DIR/system/after/snapshot.json"
 jq -n --arg schema_version "2.0" --arg generated_at "$(date -Is)" \
     --arg result_directory "$(basename "$RESULT_DIR")" --arg architecture "$ARCH_LABEL" \
+    --arg dataset_size_label "$DATASET_SIZE_LABEL" --argjson dataset_size_bytes "$DATASET_SIZE_BYTES" \
     --slurpfile per_lun_repeat "$ANALYSIS_DIR/per_lun_repeat_summary.json" \
     --slurpfile aggregate_repeat "$ANALYSIS_DIR/aggregate_repeat_summary.json" \
     --slurpfile per_lun_statistics "$ANALYSIS_DIR/per_lun_statistics.json" \
@@ -300,7 +305,8 @@ jq -n --arg schema_version "2.0" --arg generated_at "$(date -Is)" \
     --slurpfile before <(if [[ -f "$BEFORE_SNAPSHOT" ]]; then cat "$BEFORE_SNAPSHOT"; else echo '{}'; fi) \
     --slurpfile after <(if [[ -f "$AFTER_SNAPSHOT" ]]; then cat "$AFTER_SNAPSHOT"; else echo '{}'; fi) \
     '{schema_version:$schema_version,generated_at:$generated_at,result_directory:$result_directory,
-      architecture:$architecture,system:{before:$before[0],after:$after[0]},
+      architecture:$architecture,dataset_size_label:$dataset_size_label,
+      dataset_size_bytes:$dataset_size_bytes,system:{before:$before[0],after:$after[0]},
       benchmark_metadata:$benchmark_metadata[0],manifest:$manifest[0],
       per_lun_repeat:$per_lun_repeat[0],aggregate_repeat:$aggregate_repeat[0],
       per_lun_statistics:$per_lun_statistics[0],aggregate_statistics:$aggregate_statistics[0],
@@ -310,6 +316,7 @@ jq -n --arg schema_version "2.0" --arg generated_at "$(date -Is)" \
     echo "KAVOX FIO BENCHMARK FINAL REPORT"
     echo "Generated: $(date -Is)"
     echo "Architecture: $ARCH_LABEL"
+    echo "Dataset size per LUN: $DATASET_SIZE_LABEL ($DATASET_SIZE_BYTES bytes)"
     echo "Result directory: $RESULT_DIR"
     echo "Expected repetitions per job: $EXPECTED_REPETITIONS"
     echo "Valid per-LUN/repeat results: $VALID_PER_LUN"

@@ -34,7 +34,7 @@ printf 'YES\n' | "$SUITE/run_tests.sh" baremetal 01 1 "$mount_csv" 3 0 yes 1 \
     normalize-profile '' 'RAID5 Pool A' >/dev/null
 
 run_dir="$(find "$SUITE/results" -mindepth 1 -maxdepth 1 -type d \
-    -name 'baremetal_2lun_qd-equal-profile_jobs-01_rt1s_r3_tag-raid5-pool-a_*' -print -quit)"
+    -name 'baremetal_2lun_ds-1TiB_qd-equal-profile_jobs-01_rt1s_r3_tag-raid5-pool-a_*' -print -quit)"
 [[ -n "$run_dir" ]]
 grep -Fxq 'run_label=raid5-pool-a' "$run_dir/run.env"
 grep -Fxq 'profile_tag=jobs-01' "$run_dir/run.env"

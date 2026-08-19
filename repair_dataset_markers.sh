@@ -10,17 +10,28 @@ set -u
 set -o pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DATASET_RELATIVE_PATH="fio-test/fio-data-1TiB.bin"
-DATA_SIZE=1099511627776
-SAMPLE_SIZE=67108864
-MIDDLE_OFFSET=$((DATA_SIZE / 2))
-END_OFFSET=$((DATA_SIZE - SAMPLE_SIZE))
+DATASET_SPEC_LIB="$ROOT_DIR/lib/dataset_spec.sh"
+[[ -r "$DATASET_SPEC_LIB" ]] || { echo "ERROR: dataset specification library is missing" >&2; exit 1; }
+# shellcheck source=lib/dataset_spec.sh
+source "$DATASET_SPEC_LIB"
+
 MOUNT_PATHS_ARGUMENT="${1:-}"
+DATASET_SIZE_INPUT="${2:-1TiB}"
 
 fail() {
     echo "ERROR: $*" >&2
     exit 1
 }
+
+kavox_configure_dataset_spec "$DATASET_SIZE_INPUT" || {
+    kavox_dataset_size_help >&2
+    fail "invalid dataset size: $DATASET_SIZE_INPUT"
+}
+kavox_configure_sample_regions || fail "cannot calculate aligned sample regions"
+DATA_SIZE=$DATASET_SIZE_BYTES
+SAMPLE_SIZE=$DATASET_SAMPLE_SIZE_BYTES
+MIDDLE_OFFSET=$DATASET_MIDDLE_OFFSET_BYTES
+END_OFFSET=$DATASET_END_OFFSET_BYTES
 
 MOUNT_PATHS=()
 if [[ -n "$MOUNT_PATHS_ARGUMENT" ]]; then
@@ -61,7 +72,7 @@ for ((INDEX=0; INDEX<${#MOUNT_PATHS[@]}; INDEX++)); do
     DATA_FILE="$MOUNT_PATH/$DATASET_RELATIVE_PATH"
     [[ -f "$DATA_FILE" && -r "$DATA_FILE" ]] || fail "dataset missing or unreadable: $DATA_FILE"
     [[ -w "$(dirname -- "$DATA_FILE")" ]] || fail "dataset directory is not writable for marker repair: $(dirname -- "$DATA_FILE")"
-    [[ "$(stat -c %s -- "$DATA_FILE")" == "$DATA_SIZE" ]] || fail "dataset is not exactly 1 TiB: $DATA_FILE"
+    [[ "$(stat -c %s -- "$DATA_FILE")" == "$DATA_SIZE" ]] || fail "dataset is not exactly $DATASET_SIZE_LABEL: $DATA_FILE"
     for PREVIOUS_FILE in "${DATA_FILES[@]:-}"; do
         [[ "$DATA_FILE" != "$PREVIOUS_FILE" ]] || fail "duplicate dataset path: $DATA_FILE"
     done
@@ -128,7 +139,7 @@ FIO_RC=${PIPESTATUS[0]}
 (( FIO_RC == 0 )) || fail "sample reads failed; no marker was changed"
 
 echo
-echo "Sample reads passed. This is not a full 1 TiB checksum and cannot prove how the file was originally created."
+echo "Sample reads passed. This is not a full $DATASET_SIZE_LABEL checksum and cannot prove how the file was originally created."
 echo "This action writes only small .fio-initialized marker files; dataset bytes are never modified."
 read -r -p "Type TRUST EXISTING DATASETS to repair markers: " CONFIRM
 [[ "$CONFIRM" == "TRUST EXISTING DATASETS" ]] || fail "marker repair was not confirmed; no marker was changed"
@@ -141,6 +152,7 @@ for INDEX in "${REPAIR_INDEXES[@]}"; do
     {
         echo "Kavox managed FIO dataset"
         echo "size_bytes=$DATA_SIZE"
+        echo "size_label=$DATASET_SIZE_LABEL"
         echo "filesystem_uuid=${FILESYSTEM_UUIDS[$INDEX]}"
         echo "inode=$INODE"
         echo "marker_repaired_at=$(date -Is)"
